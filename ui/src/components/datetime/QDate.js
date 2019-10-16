@@ -67,7 +67,8 @@ export default Vue.extend({
       yearDirection: 'left',
       startYear: inner.year - inner.year % yearsInterval,
       innerModel: inner,
-      extModel: external
+      extModel: external,
+      tabbed: false
     }
   },
 
@@ -293,25 +294,86 @@ export default Vue.extend({
       }
     },
 
-    focusFirstElement () {
-      if (this.minimal) {
-        this.focusFirstButtonInNav()
+    __getDateAt (day) {
+      if (this.title !== void 0 && this.title !== null && this.title.length > 0) {
+        return this.title
+      }
+
+      const model = this.extModel
+      if (model.dateHash === null) { return ' --- ' }
+
+      let date
+
+      if (this.calendar !== 'persian') {
+        date = new Date(model.year, model.month - 1, day)
       }
       else {
-        this.$refs.headerSubtitle.focus()
+        const gDate = toGregorian(model.year, model.month, day)
+        date = new Date(gDate.gy, gDate.gm - 1, gDate.gd)
+      }
+
+      if (isNaN(date.valueOf()) === true) { return ' --- ' }
+
+      if (this.computedLocale.headerTitle !== void 0) {
+        return this.computedLocale.headerTitle(date, model)
+      }
+
+      return this.computedLocale.daysShort[ date.getDay() ] + ', ' +
+        this.computedLocale.monthsShort[ model.month - 1 ] + ' ' +
+        day + ' ' + model.year
+    },
+
+    __getPreviousMonth (label) {
+      let year = this.innerModel.year
+      let index = this.computedLocale.months.indexOf(label) - 1
+      if (index < 0) {
+        index = 11
+        year--
+      }
+      return this.computedLocale.months[index] + ' ' + year
+    },
+
+    __getNextMonth (label) {
+      let year = this.innerModel.year
+      let index = this.computedLocale.months.indexOf(label) + 1
+      if (index > 11) {
+        index = 0
+        year++
+      }
+      return this.computedLocale.months[index] + ' ' + year
+    },
+
+    __getFirstElement () {
+      if (this.view === 'Calendar') {
+        return this.$refs.MonthsBack.$el
+      }
+      else if (this.view === 'Months') {
+        return this.$refs.month1.$el
+      }
+      else if (this.view === 'Years') {
+        return this.$refs.mainYearsBack.$el
       }
     },
 
-    focusHeaderTitle () {
-      if (this.minimal) {
-        this.focusFirstButtonInNav()
+    __getLastElement () {
+      if (this.view === 'Calendar') {
+        let day
+        for (day = this.daysInMonth; day > 0; day--) {
+          if (this.$refs['day' + day]) {
+            return this.$refs['day' + day].$el
+          }
+        }
+        return this.$refs.YearsNext.$el.focus()
       }
-      else {
-        this.$refs.headerTitle.focus()
+      else if (this.view === 'Months') {
+        return this.$refs.month12.$el
+      }
+      else if (this.view === 'Years') {
+        return this.$refs.mainYearsNext.$el
       }
     },
 
-    focusFirstButtonInNav () {
+    __focusFirstButtonInNav () {
       if (this.view === 'Calendar') {
         this.$refs.MonthsBack.$el.focus()
       }
@@ -320,7 +382,7 @@ export default Vue.extend({
       }
     },
 
-    focusLastButtonInNav () {
+    __focusLastButtonInNav () {
       if (this.view === 'Calendar') {
         this.$refs.YearsNext.$el.focus()
       }
@@ -329,7 +391,7 @@ export default Vue.extend({
       }
     },
 
-    focusFirstElementInMain () {
+    __focusFirstElementInMain () {
       if (this.view === 'Calendar') {
         this.$refs.day1.$el.focus()
       }
@@ -341,20 +403,7 @@ export default Vue.extend({
       }
     },
 
-    focusLastElementInMain () {
-      if (this.view === 'Calendar') {
-        let day = this.daysInMonth
-        this.$refs['day' + day].$el.focus()
-      }
-      else if (this.view === 'Months') {
-        this.$refs.month12.$el.focus()
-      }
-      else if (this.view === 'Years') {
-        this.$refs.mainYearsNext.$el.focus()
-      }
-    },
-
-    focusLastDayInPrevMonth () {
+    __focusLastDayInPrevMonth () {
       if (this.innerModel.month === 1) {
         this.__setYear(this.innerModel.year - 1)
       }
@@ -362,7 +411,7 @@ export default Vue.extend({
       this.__setDay(this.daysInMonth)
     },
 
-    focusFirstDayInNextMonth () {
+    __focusFirstDayInNextMonth () {
       if (this.innerModel.month === 12) {
         this.__setYear(this.innerModel.year + 1)
       }
@@ -370,7 +419,7 @@ export default Vue.extend({
       this.__setDay(1)
     },
 
-    focusPrevMonth (day) {
+    __focusPrevMonth (day) {
       if (this.innerModel.month === 1) {
         this.__setYear(this.innerModel.year - 1)
       }
@@ -381,7 +430,7 @@ export default Vue.extend({
       this.__setDay(day)
     },
 
-    focusNextMonth (day) {
+    __focusNextMonth (day) {
       if (this.innerModel.month === 12) {
         this.__setYear(this.innerModel.year + 1)
       }
@@ -392,7 +441,7 @@ export default Vue.extend({
       this.__setDay(day)
     },
 
-    focusCurr () {
+    __focusCurr () {
       if (this.view === 'Months') {
         let currMonth = this.innerModel.month
         this.$refs['month' + currMonth].$el.focus()
@@ -463,13 +512,15 @@ export default Vue.extend({
 
       return h('div', {
         staticClass: 'row q-date__header-bkg',
-        class: this.headerClass
+        class: this.headerClass,
+        attrs: { role: 'region', 'aria-label': 'Calendar header' }
       }, [
         this.closeBtn === true ? h('div', {
           staticClass: 'col-shrink'
         }, [
           h(QBtn, {
             staticClass: 'q-date__header-close',
+            attrs: { 'aria-label': 'close pop up calendar' },
             props: {
               icon: this.$q.iconSet.datetime.close,
               flat: true,
@@ -497,29 +548,12 @@ export default Vue.extend({
               }
             }, [
               h('div', {
-                ref: 'headerSubtitle',
                 key: 'h-yr-' + this.headerSubtitle,
-                staticClass: 'q-date__header-subtitle q-date__header-link',
+                staticClass: 'q-date__header-subtitle q-date__header-link focus-only',
                 class: this.view === 'Years' ? 'q-date__header-link--active' : 'cursor-pointer',
-                attrs: { tabindex: this.computedTabindex },
+                attrs: { tabindex: this.computedTabindex, role: 'button' },
                 on: {
-                  click: () => { this.view = 'Years' },
-                  keydown: e => { e.preventDefault() },
-                  keyup: e => {
-                    switch (e.keyCode) {
-                      case KEYCODE_ENTER:
-                        this.view = 'Years'
-                        break
-                      case KEYCODE_UP:
-                      case KEYCODE_LEFT:
-                        this.focusLastElementInMain()
-                        break
-                      case KEYCODE_RIGHT:
-                      case KEYCODE_DOWN:
-                        this.focusHeaderTitle()
-                        break
-                    }
-                  }
+                  click: () => { this.view = 'Years' }
                 }
               }, [ this.headerSubtitle ])
             ])
@@ -537,29 +571,12 @@ export default Vue.extend({
                 }
               }, [
                 h('div', {
-                  ref: 'headerTitle',
                   key: 'h-sub' + this.headerTitle,
-                  staticClass: 'q-date__header-title-label q-date__header-link',
+                  staticClass: 'q-date__header-title-label q-date__header-link focus-only',
                   class: this.view === 'Calendar' ? 'q-date__header-link--active' : 'cursor-pointer',
-                  attrs: { tabindex: this.computedTabindex },
+                  attrs: { tabindex: this.computedTabindex, role: 'button' },
                   on: {
-                    click: () => { this.view = 'Calendar' },
-                    keydown: e => { e.preventDefault() },
-                    keyup: e => {
-                      switch (e.keyCode) {
-                        case KEYCODE_ENTER:
-                          this.view = 'Calendar'
-                          break
-                        case KEYCODE_LEFT:
-                        case KEYCODE_UP:
-                          this.$refs.headerSubtitle.focus()
-                          break
-                        case KEYCODE_RIGHT:
-                        case KEYCODE_DOWN:
-                          this.focusFirstButtonInNav()
-                          break
-                      }
-                    }
+                    click: () => { this.view = 'Calendar' }
                   }
                 }, [ this.headerTitle ])
               ])
@@ -567,6 +584,7 @@ export default Vue.extend({
 
             this.todayBtn === true ? h(QBtn, {
               staticClass: 'q-date__header-today',
+              attrs: { 'aria-label': 'select today\'s date' },
               props: {
                 icon: this.$q.iconSet.datetime.today,
                 flat: true,
@@ -586,11 +604,11 @@ export default Vue.extend({
     __getNavigation (h, { label, view, key, dir, goTo, cls }) {
       return [
         h('div', {
-          staticClass: 'row items-center q-date__arrow',
-          ref: 'nav'
+          staticClass: 'row items-center q-date__arrow'
         }, [
           h(QBtn, {
             ref: view + 'Back',
+            attrs: { 'aria-label': view === 'Months' ? 'Previous month ' + this.__getPreviousMonth(label) : 'Previous year ' + (label - 1) },
             props: {
               round: true,
               dense: true,
@@ -612,17 +630,14 @@ export default Vue.extend({
                       this.$refs['MonthsNext'].$el.focus()
                     }
                     else {
-                      this.focusHeaderTitle()
+                      this.$refs['YearsNext'].$el.focus()
                     }
-                    break
-                  case KEYCODE_UP:
-                    this.focusHeaderTitle()
                     break
                   case KEYCODE_RIGHT:
                     this.$refs[view + 'Nav'].$el.focus()
                     break
                   case KEYCODE_DOWN:
-                    this.focusFirstElementInMain()
+                    this.__focusFirstElementInMain()
                     break
                 }
               }
@@ -659,14 +674,11 @@ export default Vue.extend({
                       case KEYCODE_LEFT:
                         this.$refs[view + 'Back'].$el.focus()
                         break
-                      case KEYCODE_UP:
-                        this.focusHeaderTitle()
-                        break
                       case KEYCODE_RIGHT:
                         this.$refs[view + 'Next'].$el.focus()
                         break
                       case KEYCODE_DOWN:
-                        this.focusFirstElementInMain()
+                        this.__focusFirstElementInMain()
                         break
                     }
                   }
@@ -681,6 +693,7 @@ export default Vue.extend({
         }, [
           h(QBtn, {
             ref: view + 'Next',
+            attrs: { 'aria-label': view === 'Months' ? 'Next month ' + this.__getNextMonth(label) : 'Next year ' + (label + 1) },
             props: {
               round: true,
               dense: true,
@@ -697,19 +710,16 @@ export default Vue.extend({
                   case KEYCODE_LEFT:
                     this.$refs[view + 'Nav'].$el.focus()
                     break
-                  case KEYCODE_UP:
-                    this.focusHeaderTitle()
-                    break
                   case KEYCODE_RIGHT:
                     if (view === 'Months') {
                       this.$refs['YearsBack'].$el.focus()
                     }
                     else {
-                      this.focusFirstElementInMain()
+                      this.$refs['MonthsBack'].$el.focus()
                     }
                     break
                   case KEYCODE_DOWN:
-                    this.focusFirstElementInMain()
+                    this.__focusFirstElementInMain()
                     break
                 }
               }
@@ -723,10 +733,12 @@ export default Vue.extend({
       return [
         h('div', {
           key: 'calendar-view',
-          staticClass: 'q-date__view q-date__calendar'
+          staticClass: 'q-date__view q-date__calendar',
+          attrs: { role: 'region', 'aria-label': 'calendar dates' }
         }, [
           h('div', {
-            staticClass: 'q-date__navigation row items-center no-wrap'
+            staticClass: 'q-date__navigation row items-center no-wrap',
+            attrs: { role: 'navigation', 'aria-label': 'Calendar' }
           }, this.__getNavigation(h, {
             label: this.computedLocale.months[ this.innerModel.month - 1 ],
             view: 'Months',
@@ -765,6 +777,7 @@ export default Vue.extend({
                   ? h(QBtn, {
                     staticClass: day.today === true ? 'q-date__today' : null,
                     ref: 'day' + day.i,
+                    attrs: { 'aria-label': this.__getDateAt(day.i), 'aria-selected': day.unelevated },
                     props: {
                       dense: true,
                       flat: day.flat,
@@ -780,17 +793,14 @@ export default Vue.extend({
                       keyup: e => {
                         e.preventDefault()
                         switch (e.keyCode) {
-                          case KEYCODE_TAB:
-                            console.log('tabbed in days')
-                            break
                           case KEYCODE_ENTER:
                             this.__setDay(day.i)
                             break
                           case KEYCODE_PGUP:
-                            this.focusPrevMonth(day.i)
+                            this.__focusPrevMonth(day.i)
                             break
                           case KEYCODE_PGDN:
-                            this.focusNextMonth(day.i)
+                            this.__focusNextMonth(day.i)
                             break
                           case KEYCODE_HOME:
                             this.$refs.day1.$el.focus()
@@ -799,12 +809,13 @@ export default Vue.extend({
                             this.$refs['day' + this.daysInMonth].$el.focus()
                             break
                           case KEYCODE_LEFT:
+                            console.log(day)
                             let prev = day.i - 1
                             if (prev > 0) {
                               this.$refs['day' + prev].$el.focus()
                             }
                             else {
-                              this.focusLastDayInPrevMonth()
+                              this.__focusLastDayInPrevMonth()
                             }
                             break
                           case KEYCODE_UP:
@@ -813,7 +824,7 @@ export default Vue.extend({
                               this.$refs['day' + prevWeek].$el.focus()
                             }
                             else if (day.i === 1) {
-                              this.focusLastButtonInNav()
+                              this.__focusLastButtonInNav()
                             }
                             else {
                               this.$refs.day1.$el.focus()
@@ -825,7 +836,7 @@ export default Vue.extend({
                               this.$refs['day' + next].$el.focus()
                             }
                             else {
-                              this.focusFirstDayInNextMonth()
+                              this.__focusFirstDayInNextMonth()
                             }
                             break
                           case KEYCODE_DOWN:
@@ -834,7 +845,7 @@ export default Vue.extend({
                               this.$refs['day' + nextWeek].$el.focus()
                             }
                             else if (day.i === this.daysInMonth) {
-                              this.focusFirstElement()
+                              this.__focusFirstButtonInNav()
                             }
                             else {
                               this.$refs['day' + this.daysInMonth].$el.focus()
@@ -866,6 +877,7 @@ export default Vue.extend({
           h(QBtn, {
             staticClass: currentYear === true && this.today.month === i + 1 ? 'q-date__today' : null,
             ref: 'month' + (i + 1),
+            attrs: { 'aria-label': this.computedLocale.months[i], 'aria-selected': active },
             props: {
               flat: !active,
               label: month,
@@ -888,39 +900,31 @@ export default Vue.extend({
                     break
                   case KEYCODE_LEFT:
                     let lastMonth = i
-                    if (lastMonth > 0) {
-                      this.$refs['month' + lastMonth].$el.focus()
+                    if (lastMonth <= 0) {
+                      lastMonth = 12
                     }
-                    else {
-                      this.focusHeaderTitle()
-                    }
+                    this.$refs['month' + lastMonth].$el.focus()
                     break
                   case KEYCODE_UP:
                     lastMonth = i - 2
-                    if (lastMonth > 0) {
-                      this.$refs['month' + lastMonth].$el.focus()
+                    if (lastMonth <= 0) {
+                      lastMonth = 12 - (2 - i)
                     }
-                    else {
-                      this.focusHeaderTitle()
-                    }
+                    this.$refs['month' + lastMonth].$el.focus()
                     break
                   case KEYCODE_RIGHT:
                     let nextMonth = i + 2
-                    if (nextMonth <= 12) {
-                      this.$refs['month' + nextMonth].$el.focus()
+                    if (nextMonth > 12) {
+                      nextMonth = 1
                     }
-                    else {
-                      this.focusFirstElement()
-                    }
+                    this.$refs['month' + nextMonth].$el.focus()
                     break
                   case KEYCODE_DOWN:
                     nextMonth = i + 2 + 2
-                    if (nextMonth <= 12) {
-                      this.$refs['month' + nextMonth].$el.focus()
+                    if (nextMonth > 12) {
+                      nextMonth = i - 8
                     }
-                    else {
-                      this.focusFirstElement()
-                    }
+                    this.$refs['month' + nextMonth].$el.focus()
                     break
                 }
               }
@@ -931,14 +935,10 @@ export default Vue.extend({
 
       return h('div', {
         key: 'months-view',
-        staticClass: 'q-date__view q-date__months column flex-center'
+        staticClass: 'q-date__view q-date__months column flex-center',
+        attrs: { role: 'region', 'aria-label': 'select month' }
       }, [
-        h('div', {
-          staticClass: 'q-date__months-content row',
-          created () {
-            console.log('sadf')
-          }
-        }, content)
+        h('div', { staticClass: 'q-date__months-content row' }, content)
       ])
     },
 
@@ -959,6 +959,7 @@ export default Vue.extend({
               staticClass: this.today.year === i ? 'q-date__today' : null,
               class: 'year' + i,
               ref: 'year' + i,
+              attrs: { 'aria-selected': active },
               props: {
                 flat: !active,
                 label: i,
@@ -997,12 +998,10 @@ export default Vue.extend({
                       break
                     case KEYCODE_UP:
                       lastYear = i - 3
-                      if (lastYear >= start) {
-                        this.$refs['year' + lastYear].$el.focus()
+                      if (lastYear < start) {
+                        lastYear += yearsInterval + 1
                       }
-                      else {
-                        this.focusHeaderTitle()
-                      }
+                      this.$refs['year' + lastYear].$el.focus()
                       break
                     case KEYCODE_RIGHT:
                       let nextYear = i + 1
@@ -1015,12 +1014,10 @@ export default Vue.extend({
                       break
                     case KEYCODE_DOWN:
                       nextYear = i + 3
-                      if (nextYear <= stop) {
-                        this.$refs['year' + nextYear].$el.focus()
+                      if (nextYear > stop) {
+                        nextYear -= yearsInterval + 1
                       }
-                      else {
-                        this.focusFirstElement()
-                      }
+                      this.$refs['year' + nextYear].$el.focus()
                       break
                   }
                 }
@@ -1031,13 +1028,15 @@ export default Vue.extend({
       }
 
       return h('div', {
-        staticClass: 'q-date__view q-date__years flex flex-center full-height'
+        staticClass: 'q-date__view q-date__years flex flex-center full-height',
+        attrs: { role: 'region', 'aria-label': 'select year' }
       }, [
         h('div', {
           staticClass: 'col-auto'
         }, [
           h(QBtn, {
             ref: 'mainYearsBack',
+            attrs: { 'aria-label': 'Years ' + (start - yearsInterval) + ' to ' + start },
             props: {
               round: true,
               dense: true,
@@ -1052,10 +1051,8 @@ export default Vue.extend({
                 e.preventDefault()
                 switch (e.keyCode) {
                   case KEYCODE_LEFT:
-                    this.$refs.mainYearsNext.$el.focus()
-                    break
                   case KEYCODE_UP:
-                    this.focusHeaderTitle()
+                    this.$refs.mainYearsNext.$el.focus()
                     break
                   case KEYCODE_RIGHT:
                   case KEYCODE_DOWN:
@@ -1076,6 +1073,7 @@ export default Vue.extend({
         }, [
           h(QBtn, {
             ref: 'mainYearsNext',
+            attrs: { 'aria-label': 'Years ' + stop + ' to ' + (stop + yearsInterval) },
             props: {
               round: true,
               dense: true,
@@ -1090,16 +1088,12 @@ export default Vue.extend({
                 e.preventDefault()
                 switch (e.keyCode) {
                   case KEYCODE_LEFT:
+                  case KEYCODE_UP:
                     this.$refs['year' + (this.startYear + yearsInterval)].$el.focus()
                     break
-                  case KEYCODE_UP:
-                    this.focusHeaderTitle()
-                    break
                   case KEYCODE_RIGHT:
-                    this.$refs.mainYearsBack.$el.focus()
-                    break
                   case KEYCODE_DOWN:
-                    this.focusHeaderTitle()
+                    this.$refs.mainYearsBack.$el.focus()
                     break
                 }
               }
@@ -1226,7 +1220,8 @@ export default Vue.extend({
     return h('div', {
       staticClass: 'q-date',
       class: this.classes,
-      on: this.$listeners
+      on: this.$listeners,
+      attrs: { role: 'region', 'aria-label': 'Calendar' }
     }, [
       this.__getHeader(h, { nextEl: 0 }),
       h('div', {
@@ -1234,23 +1229,34 @@ export default Vue.extend({
         attrs: { tabindex: -1 },
         ref: 'blurTarget',
         on: {
-          keyup: e => {
-            switch (e.keyCode) {
-              case 9:
-                console.log('tabbed')
-                break
-              case 13:
-                console.log('sd')
-                break
-              case 37:
-                var divs = document.getElementsByTagName('div')
+          keydown: e => {
+            if (e.keyCode === KEYCODE_TAB) {
+              let index, firstElIndex, lastELIndex, activeElIndex
+              var focusableElements = 'a:not([disabled]), button:not([disabled]), input[type=text]:not([disabled]), [tabindex]:not([disabled]):not([tabindex="-1"])'
+              var focusable = Array.from(document.querySelectorAll(focusableElements))
 
-                for (var j = 0; j < divs.length; j++) {
-                  if (divs[j].tabIndex === 0) {
-                    console.log('tab div')
+              activeElIndex = focusable.indexOf(document.activeElement)
+              firstElIndex = focusable.indexOf(this.__getFirstElement())
+              lastELIndex = focusable.indexOf(this.__getLastElement())
+
+              if (activeElIndex >= firstElIndex && activeElIndex <= lastELIndex) {
+                if (this.tabbed) {
+                  if (e.getModifierState('Shift')) {
+                    index = firstElIndex - 2
                   }
+                  else {
+                    index = lastELIndex
+                  }
+                  if (index > -1) {
+                    var nextElement = focusable[index + 1] || focusable[0]
+                    nextElement.focus()
+                  }
+                  this.tabbed = false
                 }
-                break
+                else {
+                  this.tabbed = true
+                }
+              }
             }
           }
         }
@@ -1267,6 +1273,6 @@ export default Vue.extend({
   },
 
   updated () {
-    this.focusCurr()
+    this.__focusCurr()
   }
 })

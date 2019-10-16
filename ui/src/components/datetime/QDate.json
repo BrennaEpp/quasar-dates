@@ -106,6 +106,12 @@
       "category": "content"
     },
 
+    "close-btn": {
+      "type": "Boolean",
+      "desc": "Display a button that closes the popup (if there is one) q-date is contained in",
+      "category": "content"
+    },
+
     "minimal": {
       "type": "Boolean",
       "desc": "Don’t display the header",

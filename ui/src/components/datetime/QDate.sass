@@ -1,9 +1,15 @@
+.focus-only
+  outline: 6px solid black;  
+
 .q-date
   display: inline-flex
   box-shadow: $shadow-2
   border-radius: $generic-border-radius
   background: #fff
   max-width: 100%
+
+  .focus-only:focus
+    outline: 2px solid white;  
 
   .q-btn
     font-weight: normal
@@ -17,6 +23,12 @@
     background-color: $primary
     background-color: var(--q-color-primary)
     padding: 16px
+
+  &__header-bkg
+    color white
+    background-color $primary
+    background-color var(--q-color-primary)
+    border-top-left-radius inherit
 
   &__content
     outline: none
@@ -106,6 +118,11 @@
   &__today
     box-shadow: 0 0 1px 0 currentColor
 
+  &__header-close
+    margin 10px
+    margin-right 0px
+    margin-bottom 0px
+
   &__years-content
     padding: 0 8px
 
@@ -166,6 +183,11 @@
       border-bottom-left-radius: inherit
       min-width: 110px
       width: 110px
+
+    .q-date__header-bkg
+      border-bottom-left-radius inherit
+      min-width 110px
+      width 110px
 
     .q-date__header-title
       flex-direction: column
