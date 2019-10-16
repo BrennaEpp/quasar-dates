@@ -10,6 +10,17 @@ import { jalaaliMonthLength, toGregorian } from '../../utils/date-persian.js'
 const yearsInterval = 20
 const viewIsValid = v => ['Calendar', 'Years', 'Months'].includes(v)
 
+const KEYCODE_TAB = 9
+const KEYCODE_ENTER = 13
+const KEYCODE_PGUP = 33
+const KEYCODE_PGDN = 34
+const KEYCODE_HOME = 36
+const KEYCODE_END = 35
+const KEYCODE_DOWN = 40
+const KEYCODE_LEFT = 37
+const KEYCODE_RIGHT = 39
+const KEYCODE_UP = 38
+
 export default Vue.extend({
   name: 'QDate',
 
@@ -40,6 +51,7 @@ export default Vue.extend({
     firstDayOfWeek: [String, Number],
     todayBtn: Boolean,
     minimal: Boolean,
+    closeBtn: Boolean,
     defaultView: {
       type: String,
       default: 'Calendar',
@@ -281,6 +293,124 @@ export default Vue.extend({
       }
     },
 
+    focusFirstElement () {
+      if (this.minimal) {
+        this.focusFirstButtonInNav()
+      }
+      else {
+        this.$refs.headerSubtitle.focus()
+      }
+    },
+
+    focusHeaderTitle () {
+      if (this.minimal) {
+        this.focusFirstButtonInNav()
+      }
+      else {
+        this.$refs.headerTitle.focus()
+      }
+    },
+
+    focusFirstButtonInNav () {
+      if (this.view === 'Calendar') {
+        this.$refs.MonthsBack.$el.focus()
+      }
+      else {
+        this.focusFirstElementInMain()
+      }
+    },
+
+    focusLastButtonInNav () {
+      if (this.view === 'Calendar') {
+        this.$refs.YearsNext.$el.focus()
+      }
+      else {
+        this.focusFirstElementInMain()
+      }
+    },
+
+    focusFirstElementInMain () {
+      if (this.view === 'Calendar') {
+        this.$refs.day1.$el.focus()
+      }
+      else if (this.view === 'Months') {
+        this.$refs.month1.$el.focus()
+      }
+      else if (this.view === 'Years') {
+        this.$refs.mainYearsBack.$el.focus()
+      }
+    },
+
+    focusLastElementInMain () {
+      if (this.view === 'Calendar') {
+        let day = this.daysInMonth
+        this.$refs['day' + day].$el.focus()
+      }
+      else if (this.view === 'Months') {
+        this.$refs.month12.$el.focus()
+      }
+      else if (this.view === 'Years') {
+        this.$refs.mainYearsNext.$el.focus()
+      }
+    },
+
+    focusLastDayInPrevMonth () {
+      if (this.innerModel.month === 1) {
+        this.__setYear(this.innerModel.year - 1)
+      }
+      this.__setMonth((this.innerModel.month - 1))
+      this.__setDay(this.daysInMonth)
+    },
+
+    focusFirstDayInNextMonth () {
+      if (this.innerModel.month === 12) {
+        this.__setYear(this.innerModel.year + 1)
+      }
+      this.__setMonth((this.innerModel.month + 1))
+      this.__setDay(1)
+    },
+
+    focusPrevMonth (day) {
+      if (this.innerModel.month === 1) {
+        this.__setYear(this.innerModel.year - 1)
+      }
+      this.__setMonth((this.innerModel.month - 1))
+      if (day > this.daysInMonth) {
+        day = this.daysInMonth
+      }
+      this.__setDay(day)
+    },
+
+    focusNextMonth (day) {
+      if (this.innerModel.month === 12) {
+        this.__setYear(this.innerModel.year + 1)
+      }
+      this.__setMonth((this.innerModel.month + 1))
+      if (day > this.daysInMonth) {
+        day = this.daysInMonth
+      }
+      this.__setDay(day)
+    },
+
+    focusCurr () {
+      if (this.view === 'Months') {
+        let currMonth = this.innerModel.month
+        this.$refs['month' + currMonth].$el.focus()
+      }
+      else if (this.view === 'Years') {
+        let currYear = this.innerModel.year
+        if (currYear >= this.startYear && currYear <= this.startYear + yearsInterval) {
+          this.$refs['year' + currYear].$el.focus()
+        }
+      }
+      else {
+        let day = this.innerModel.day
+        if (this.$refs['day' + day]) {
+          this.$refs['day' + day].$el.focus()
+        }
+      }
+    },
+
     __getModels (val, mask, locale) {
       const external = __splitDate(
         val,
@@ -332,35 +462,34 @@ export default Vue.extend({
       if (this.minimal === true) { return }
 
       return h('div', {
-        staticClass: 'q-date__header',
+        staticClass: 'row q-date__header-bkg',
         class: this.headerClass
       }, [
-        h('div', {
-          staticClass: 'relative-position'
+        this.closeBtn === true ? h('div', {
+          staticClass: 'col-shrink'
         }, [
-          h('transition', {
+          h(QBtn, {
+            staticClass: 'q-date__header-close',
             props: {
-              name: 'q-transition--fade'
-            }
-          }, [
-            h('div', {
-              key: 'h-yr-' + this.headerSubtitle,
-              staticClass: 'q-date__header-subtitle q-date__header-link',
-              class: this.view === 'Years' ? 'q-date__header-link--active' : 'cursor-pointer',
-              attrs: { tabindex: this.computedTabindex },
-              on: {
-                click: () => { this.view = 'Years' },
-                keyup: e => { e.keyCode === 13 && (this.view = 'Years') }
-              }
-            }, [ this.headerSubtitle ])
-          ])
-        ]),
+              icon: this.$q.iconSet.datetime.close,
+              flat: true,
+              size: 'md',
+              dense: true,
+              round: true,
+              tabindex: this.computedTabindex
+            },
+            directives: [{
+              name: 'close-popup',
+              value: true
+            }]
+          })
+        ]) : null,
 
         h('div', {
-          staticClass: 'q-date__header-title relative-position flex no-wrap'
+          staticClass: 'col q-date__header'
         }, [
           h('div', {
-            staticClass: 'relative-position col'
+            staticClass: 'relative-position'
           }, [
             h('transition', {
               props: {
@@ -368,31 +497,88 @@ export default Vue.extend({
               }
             }, [
               h('div', {
-                key: 'h-sub' + this.headerTitle,
-                staticClass: 'q-date__header-title-label q-date__header-link',
-                class: this.view === 'Calendar' ? 'q-date__header-link--active' : 'cursor-pointer',
+                ref: 'headerSubtitle',
+                key: 'h-yr-' + this.headerSubtitle,
+                staticClass: 'q-date__header-subtitle q-date__header-link',
+                class: this.view === 'Years' ? 'q-date__header-link--active' : 'cursor-pointer',
                 attrs: { tabindex: this.computedTabindex },
                 on: {
-                  click: () => { this.view = 'Calendar' },
-                  keyup: e => { e.keyCode === 13 && (this.view = 'Calendar') }
+                  click: () => { this.view = 'Years' },
+                  keydown: e => { e.preventDefault() },
+                  keyup: e => {
+                    switch (e.keyCode) {
+                      case KEYCODE_ENTER:
+                        this.view = 'Years'
+                        break
+                      case KEYCODE_UP:
+                      case KEYCODE_LEFT:
+                        this.focusLastElementInMain()
+                        break
+                      case KEYCODE_RIGHT:
+                      case KEYCODE_DOWN:
+                        this.focusHeaderTitle()
+                        break
+                    }
+                  }
                 }
-              }, [ this.headerTitle ])
+              }, [ this.headerSubtitle ])
             ])
           ]),
 
-          this.todayBtn === true ? h(QBtn, {
-            staticClass: 'q-date__header-today',
-            props: {
-              icon: this.$q.iconSet.datetime.today,
-              flat: true,
-              size: 'sm',
-              round: true,
-              tabindex: this.computedTabindex
-            },
-            on: {
-              click: this.setToday
-            }
-          }) : null
+          h('div', {
+            staticClass: 'q-date__header-title relative-position flex no-wrap'
+          }, [
+            h('div', {
+              staticClass: 'relative-position col'
+            }, [
+              h('transition', {
+                props: {
+                  name: 'q-transition--fade'
+                }
+              }, [
+                h('div', {
+                  ref: 'headerTitle',
+                  key: 'h-sub' + this.headerTitle,
+                  staticClass: 'q-date__header-title-label q-date__header-link',
+                  class: this.view === 'Calendar' ? 'q-date__header-link--active' : 'cursor-pointer',
+                  attrs: { tabindex: this.computedTabindex },
+                  on: {
+                    click: () => { this.view = 'Calendar' },
+                    keydown: e => { e.preventDefault() },
+                    keyup: e => {
+                      switch (e.keyCode) {
+                        case KEYCODE_ENTER:
+                          this.view = 'Calendar'
+                          break
+                        case KEYCODE_LEFT:
+                        case KEYCODE_UP:
+                          this.$refs.headerSubtitle.focus()
+                          break
+                        case KEYCODE_RIGHT:
+                        case KEYCODE_DOWN:
+                          this.focusFirstButtonInNav()
+                          break
+                      }
+                    }
+                  }
+                }, [ this.headerTitle ])
+              ])
+            ]),
+
+            this.todayBtn === true ? h(QBtn, {
+              staticClass: 'q-date__header-today',
+              props: {
+                icon: this.$q.iconSet.datetime.today,
+                flat: true,
+                size: 'sm',
+                round: true,
+                tabindex: this.computedTabindex
+              },
+              on: {
+                click: this.setToday
+              }
+            }) : null
+          ])
         ])
       ])
     },
@@ -400,9 +586,11 @@ export default Vue.extend({
     __getNavigation (h, { label, view, key, dir, goTo, cls }) {
       return [
         h('div', {
-          staticClass: 'row items-center q-date__arrow'
+          staticClass: 'row items-center q-date__arrow',
+          ref: 'nav'
         }, [
           h(QBtn, {
+            ref: view + 'Back',
             props: {
               round: true,
               dense: true,
@@ -412,7 +600,32 @@ export default Vue.extend({
               tabindex: this.computedTabindex
             },
             on: {
-              click () { goTo(-1) }
+              click () { goTo(-1) },
+              keydown: e => { e.preventDefault() },
+              keyup: e => {
+                switch (e.keyCode) {
+                  case KEYCODE_ENTER:
+                    this.$refs[view + 'Back'].$el.focus()
+                    break
+                  case KEYCODE_LEFT:
+                    if (view === 'Years') {
+                      this.$refs['MonthsNext'].$el.focus()
+                    }
+                    else {
+                      this.focusHeaderTitle()
+                    }
+                    break
+                  case KEYCODE_UP:
+                    this.focusHeaderTitle()
+                    break
+                  case KEYCODE_RIGHT:
+                    this.$refs[view + 'Nav'].$el.focus()
+                    break
+                  case KEYCODE_DOWN:
+                    this.focusFirstElementInMain()
+                    break
+                }
+              }
             }
           })
         ]),
@@ -427,6 +640,7 @@ export default Vue.extend({
           }, [
             h('div', { key }, [
               h(QBtn, {
+                ref: view + 'Nav',
                 props: {
                   flat: true,
                   dense: true,
@@ -435,7 +649,27 @@ export default Vue.extend({
                   tabindex: this.computedTabindex
                 },
                 on: {
-                  click: () => { this.view = view }
+                  click: () => { this.view = view },
+                  keydown: e => { e.preventDefault() },
+                  keyup: e => {
+                    switch (e.keyCode) {
+                      case KEYCODE_ENTER:
+                        this.view = view
+                        break
+                      case KEYCODE_LEFT:
+                        this.$refs[view + 'Back'].$el.focus()
+                        break
+                      case KEYCODE_UP:
+                        this.focusHeaderTitle()
+                        break
+                      case KEYCODE_RIGHT:
+                        this.$refs[view + 'Next'].$el.focus()
+                        break
+                      case KEYCODE_DOWN:
+                        this.focusFirstElementInMain()
+                        break
+                    }
+                  }
                 }
               })
             ])
@@ -446,6 +680,7 @@ export default Vue.extend({
           staticClass: 'row items-center q-date__arrow'
         }, [
           h(QBtn, {
+            ref: view + 'Next',
             props: {
               round: true,
               dense: true,
@@ -455,7 +690,29 @@ export default Vue.extend({
               tabindex: this.computedTabindex
             },
             on: {
-              click () { goTo(1) }
+              click () { goTo(1) },
+              keydown: e => { e.preventDefault() },
+              keyup: e => {
+                switch (e.keyCode) {
+                  case KEYCODE_LEFT:
+                    this.$refs[view + 'Nav'].$el.focus()
+                    break
+                  case KEYCODE_UP:
+                    this.focusHeaderTitle()
+                    break
+                  case KEYCODE_RIGHT:
+                    if (view === 'Months') {
+                      this.$refs['YearsBack'].$el.focus()
+                    }
+                    else {
+                      this.focusFirstElementInMain()
+                    }
+                    break
+                  case KEYCODE_DOWN:
+                    this.focusFirstElementInMain()
+                    break
+                }
+              }
             }
           })
         ])
@@ -507,6 +764,7 @@ export default Vue.extend({
                 day.in === true
                   ? h(QBtn, {
                     staticClass: day.today === true ? 'q-date__today' : null,
+                    ref: 'day' + day.i,
                     props: {
                       dense: true,
                       flat: day.flat,
@@ -517,7 +775,73 @@ export default Vue.extend({
                       tabindex: this.computedTabindex
                     },
                     on: {
-                      click: () => { this.__setDay(day.i) }
+                      click: () => { this.__setDay(day.i) },
+                      keydown: e => { e.preventDefault() },
+                      keyup: e => {
+                        e.preventDefault()
+                        switch (e.keyCode) {
+                          case KEYCODE_TAB:
+                            console.log('tabbed in days')
+                            break
+                          case KEYCODE_ENTER:
+                            this.__setDay(day.i)
+                            break
+                          case KEYCODE_PGUP:
+                            this.focusPrevMonth(day.i)
+                            break
+                          case KEYCODE_PGDN:
+                            this.focusNextMonth(day.i)
+                            break
+                          case KEYCODE_HOME:
+                            this.$refs.day1.$el.focus()
+                            break
+                          case KEYCODE_END:
+                            this.$refs['day' + this.daysInMonth].$el.focus()
+                            break
+                          case KEYCODE_LEFT:
+                            let prev = day.i - 1
+                            if (prev > 0) {
+                              this.$refs['day' + prev].$el.focus()
+                            }
+                            else {
+                              this.focusLastDayInPrevMonth()
+                            }
+                            break
+                          case KEYCODE_UP:
+                            let prevWeek = day.i - 7
+                            if (prevWeek > 0) {
+                              this.$refs['day' + prevWeek].$el.focus()
+                            }
+                            else if (day.i === 1) {
+                              this.focusLastButtonInNav()
+                            }
+                            else {
+                              this.$refs.day1.$el.focus()
+                            }
+                            break
+                          case KEYCODE_RIGHT:
+                            let next = day.i + 1
+                            if (next <= this.daysInMonth) {
+                              this.$refs['day' + next].$el.focus()
+                            }
+                            else {
+                              this.focusFirstDayInNextMonth()
+                            }
+                            break
+                          case KEYCODE_DOWN:
+                            let nextWeek = day.i + 7
+                            if (nextWeek <= this.daysInMonth) {
+                              this.$refs['day' + nextWeek].$el.focus()
+                            }
+                            else if (day.i === this.daysInMonth) {
+                              this.focusFirstElement()
+                            }
+                            else {
+                              this.$refs['day' + this.daysInMonth].$el.focus()
+                            }
+                            break
+                        }
+                      }
                     }
                   }, day.event !== false ? [
                     h('div', { staticClass: 'q-date__event bg-' + day.event })
@@ -541,6 +865,7 @@ export default Vue.extend({
         }, [
           h(QBtn, {
             staticClass: currentYear === true && this.today.month === i + 1 ? 'q-date__today' : null,
+            ref: 'month' + (i + 1),
             props: {
               flat: !active,
               label: month,
@@ -550,7 +875,55 @@ export default Vue.extend({
               tabindex: this.computedTabindex
             },
             on: {
-              click: () => { this.__setMonth(i + 1) }
+              click: () => { this.__setMonth(i + 1) },
+              keydown: e => { e.preventDefault() },
+              keyup: e => {
+                e.preventDefault()
+                switch (e.keyCode) {
+                  case KEYCODE_HOME:
+                    this.$refs.month1.$el.focus()
+                    break
+                  case KEYCODE_END:
+                    this.$refs.month12.$el.focus()
+                    break
+                  case KEYCODE_LEFT:
+                    let lastMonth = i
+                    if (lastMonth > 0) {
+                      this.$refs['month' + lastMonth].$el.focus()
+                    }
+                    else {
+                      this.focusHeaderTitle()
+                    }
+                    break
+                  case KEYCODE_UP:
+                    lastMonth = i - 2
+                    if (lastMonth > 0) {
+                      this.$refs['month' + lastMonth].$el.focus()
+                    }
+                    else {
+                      this.focusHeaderTitle()
+                    }
+                    break
+                  case KEYCODE_RIGHT:
+                    let nextMonth = i + 2
+                    if (nextMonth <= 12) {
+                      this.$refs['month' + nextMonth].$el.focus()
+                    }
+                    else {
+                      this.focusFirstElement()
+                    }
+                    break
+                  case KEYCODE_DOWN:
+                    nextMonth = i + 2 + 2
+                    if (nextMonth <= 12) {
+                      this.$refs['month' + nextMonth].$el.focus()
+                    }
+                    else {
+                      this.focusFirstElement()
+                    }
+                    break
+                }
+              }
             }
           })
         ])
@@ -561,7 +934,10 @@ export default Vue.extend({
         staticClass: 'q-date__view q-date__months column flex-center'
       }, [
         h('div', {
-          staticClass: 'q-date__months-content row'
+          staticClass: 'q-date__months-content row',
+          created () {
+            console.log('sadf')
+          }
         }, content)
       ])
     },
@@ -581,6 +957,8 @@ export default Vue.extend({
           }, [
             h(QBtn, {
               staticClass: this.today.year === i ? 'q-date__today' : null,
+              class: 'year' + i,
+              ref: 'year' + i,
               props: {
                 flat: !active,
                 label: i,
@@ -591,7 +969,61 @@ export default Vue.extend({
                 tabindex: this.computedTabindex
               },
               on: {
-                click: () => { this.__setYear(i) }
+                click: () => { this.__setYear(i) },
+                keydown: e => { e.preventDefault() },
+                keyup: e => {
+                  e.preventDefault()
+                  switch (e.keyCode) {
+                    case KEYCODE_PGUP:
+                      this.startYear -= yearsInterval
+                      break
+                    case KEYCODE_PGDN:
+                      this.startYear += yearsInterval
+                      break
+                    case KEYCODE_HOME:
+                      this.$refs['year' + start].$el.focus()
+                      break
+                    case KEYCODE_END:
+                      this.$refs['year' + stop].$el.focus()
+                      break
+                    case KEYCODE_LEFT:
+                      let lastYear = i - 1
+                      if (lastYear >= start) {
+                        this.$refs['year' + lastYear].$el.focus()
+                      }
+                      else {
+                        this.$refs.mainYearsBack.$el.focus()
+                      }
+                      break
+                    case KEYCODE_UP:
+                      lastYear = i - 3
+                      if (lastYear >= start) {
+                        this.$refs['year' + lastYear].$el.focus()
+                      }
+                      else {
+                        this.focusHeaderTitle()
+                      }
+                      break
+                    case KEYCODE_RIGHT:
+                      let nextYear = i + 1
+                      if (nextYear <= stop) {
+                        this.$refs['year' + nextYear].$el.focus()
+                      }
+                      else {
+                        this.$refs.mainYearsNext.$el.focus()
+                      }
+                      break
+                    case KEYCODE_DOWN:
+                      nextYear = i + 3
+                      if (nextYear <= stop) {
+                        this.$refs['year' + nextYear].$el.focus()
+                      }
+                      else {
+                        this.focusFirstElement()
+                      }
+                      break
+                  }
+                }
               }
             })
           ])
@@ -605,6 +1037,7 @@ export default Vue.extend({
           staticClass: 'col-auto'
         }, [
           h(QBtn, {
+            ref: 'mainYearsBack',
             props: {
               round: true,
               dense: true,
@@ -613,7 +1046,23 @@ export default Vue.extend({
               tabindex: this.computedTabindex
             },
             on: {
-              click: () => { this.startYear -= yearsInterval }
+              click: () => { this.startYear -= yearsInterval },
+              keydown: e => { e.preventDefault() },
+              keyup: e => {
+                e.preventDefault()
+                switch (e.keyCode) {
+                  case KEYCODE_LEFT:
+                    this.$refs.mainYearsNext.$el.focus()
+                    break
+                  case KEYCODE_UP:
+                    this.focusHeaderTitle()
+                    break
+                  case KEYCODE_RIGHT:
+                  case KEYCODE_DOWN:
+                    this.$refs['year' + this.startYear].$el.focus()
+                    break
+                }
+              }
             }
           })
         ]),
@@ -626,6 +1075,7 @@ export default Vue.extend({
           staticClass: 'col-auto'
         }, [
           h(QBtn, {
+            ref: 'mainYearsNext',
             props: {
               round: true,
               dense: true,
@@ -634,7 +1084,25 @@ export default Vue.extend({
               tabindex: this.computedTabindex
             },
             on: {
-              click: () => { this.startYear += yearsInterval }
+              click: () => { this.startYear += yearsInterval },
+              keydown: e => { e.preventDefault() },
+              keyup: e => {
+                e.preventDefault()
+                switch (e.keyCode) {
+                  case KEYCODE_LEFT:
+                    this.$refs['year' + (this.startYear + yearsInterval)].$el.focus()
+                    break
+                  case KEYCODE_UP:
+                    this.focusHeaderTitle()
+                    break
+                  case KEYCODE_RIGHT:
+                    this.$refs.mainYearsBack.$el.focus()
+                    break
+                  case KEYCODE_DOWN:
+                    this.focusHeaderTitle()
+                    break
+                }
+              }
             }
           })
         ])
@@ -760,12 +1228,32 @@ export default Vue.extend({
       class: this.classes,
       on: this.$listeners
     }, [
-      this.__getHeader(h),
-
+      this.__getHeader(h, { nextEl: 0 }),
       h('div', {
         staticClass: 'q-date__content relative-position overflow-auto',
         attrs: { tabindex: -1 },
-        ref: 'blurTarget'
+        ref: 'blurTarget',
+        on: {
+          keyup: e => {
+            switch (e.keyCode) {
+              case 9:
+                console.log('tabbed')
+                break
+              case 13:
+                console.log('sd')
+                break
+              case 37:
+                var divs = document.getElementsByTagName('div')
+
+                for (var j = 0; j < divs.length; j++) {
+                  if (divs[j].tabIndex === 0) {
+                    console.log('tab div')
+                  }
+                }
+                break
+            }
+          }
+        }
       }, [
         h('transition', {
           props: {
@@ -776,5 +1264,9 @@ export default Vue.extend({
         ])
       ])
     ])
+  },
+
+  updated () {
+    this.focusCurr()
   }
 })
