@@ -67,8 +67,7 @@ export default Vue.extend({
       yearDirection: 'left',
       startYear: inner.year - inner.year % yearsInterval,
       innerModel: inner,
-      extModel: external,
-      tabbed: false
+      extModel: external
     }
   },
 
@@ -1240,21 +1239,15 @@ export default Vue.extend({
               lastELIndex = focusable.indexOf(this.__getLastElement())
 
               if (activeElIndex >= firstElIndex && activeElIndex <= lastELIndex) {
-                if (this.tabbed) {
-                  if (e.getModifierState('Shift')) {
-                    index = firstElIndex - 2
-                  }
-                  else {
-                    index = lastELIndex
-                  }
-                  if (index > -1) {
-                    var nextElement = focusable[index + 1] || focusable[0]
-                    nextElement.focus()
-                  }
-                  this.tabbed = false
+                if (e.getModifierState('Shift')) {
+                  index = firstElIndex - 2
                 }
                 else {
-                  this.tabbed = true
+                  index = lastELIndex
+                }
+                if (index > -1) {
+                  var nextElement = focusable[index + 1] || focusable[0]
+                  nextElement.focus()
                 }
               }
             }
