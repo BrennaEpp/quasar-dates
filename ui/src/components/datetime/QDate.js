@@ -548,11 +548,17 @@ export default Vue.extend({
             }, [
               h('div', {
                 key: 'h-yr-' + this.headerSubtitle,
-                staticClass: 'q-date__header-subtitle q-date__header-link focus-only',
+                ref: 'subtitle',
+                staticClass: 'q-date__header-subtitle q-date__header-link',
                 class: this.view === 'Years' ? 'q-date__header-link--active' : 'cursor-pointer',
                 attrs: { tabindex: this.computedTabindex, role: 'button' },
                 on: {
-                  click: () => { this.view = 'Years' }
+                  click: () => { this.view = 'Years' },
+                  keyup: e => {
+                    if (e.keyCode === KEYCODE_TAB) {
+                      this.$refs.subtitle.classList.add('focus-only')
+                    }
+                  }
                 }
               }, [ this.headerSubtitle ])
             ])
@@ -571,11 +577,17 @@ export default Vue.extend({
               }, [
                 h('div', {
                   key: 'h-sub' + this.headerTitle,
-                  staticClass: 'q-date__header-title-label q-date__header-link focus-only',
+                  ref: 'headerTitle',
+                  staticClass: 'q-date__header-title-label q-date__header-link',
                   class: this.view === 'Calendar' ? 'q-date__header-link--active' : 'cursor-pointer',
                   attrs: { tabindex: this.computedTabindex, role: 'button' },
                   on: {
-                    click: () => { this.view = 'Calendar' }
+                    click: () => { this.view = 'Calendar' },
+                    keyup: e => {
+                      if (e.keyCode === KEYCODE_TAB) {
+                        this.$refs.headerTitle.classList.add('focus-only')
+                      }
+                    }
                   }
                 }, [ this.headerTitle ])
               ])
@@ -776,7 +788,7 @@ export default Vue.extend({
                   ? h(QBtn, {
                     staticClass: day.today === true ? 'q-date__today' : null,
                     ref: 'day' + day.i,
-                    attrs: { 'aria-label': this.__getDateAt(day.i), 'aria-selected': day.unelevated },
+                    attrs: { 'aria-label': this.__getDateAt(day.i), 'aria-pressed': day.unelevated },
                     props: {
                       dense: true,
                       flat: day.flat,
@@ -876,7 +888,7 @@ export default Vue.extend({
           h(QBtn, {
             staticClass: currentYear === true && this.today.month === i + 1 ? 'q-date__today' : null,
             ref: 'month' + (i + 1),
-            attrs: { 'aria-label': this.computedLocale.months[i], 'aria-selected': active },
+            attrs: { 'aria-label': this.computedLocale.months[i], 'aria-pressed': active },
             props: {
               flat: !active,
               label: month,
@@ -958,7 +970,7 @@ export default Vue.extend({
               staticClass: this.today.year === i ? 'q-date__today' : null,
               class: 'year' + i,
               ref: 'year' + i,
-              attrs: { 'aria-selected': active },
+              attrs: { 'aria-pressed': active },
               props: {
                 flat: !active,
                 label: i,
