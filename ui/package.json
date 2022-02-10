@@ -75,7 +75,7 @@
     "json-beautify": "^1.1.1",
     "lru-cache": "^5.1.1",
     "memory-fs": "^0.4.1",
-    "node-sass": "^4.12.0",
+    "node-sass": "^7.0.0",
     "open": "^6.4.0",
     "postcss-loader": "^3.0.0",
     "postcss-rtl": "^1.5.0",
